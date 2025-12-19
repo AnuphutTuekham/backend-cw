@@ -43,51 +43,66 @@ app.get('/items/:id', async (c) => {
 
 // Create item
 app.post('/items', async (c) => {
-  try {
-    const body = await c.req.json()
-    const title = body.title
-    const description = body.description ?? null
-    if (!title) return c.json({ error: 'title is required' }, 400)
-    const db = getDb(c)
-    await db.prepare('INSERT INTO items (title, description) VALUES (?, ?)').bind(title, description).run()
-    // Use SQLite last_insert_rowid() to get the row inserted by this connection
-    const created = await db.prepare('SELECT * FROM items WHERE id = last_insert_rowid()').all()
-    const item = (created.results && created.results[0]) || null
-    if (!item) return c.json({ error: 'Insert failed' }, 500)
-    return c.json(item, 201)
-  } catch (err: any) {
-    return c.json({ error: err?.message || String(err) }, 500)
-  }
+  const body = await c.req.json()
+  const title = body.title
+  const description = body.description ?? null
+
+  if (!title) return c.json({ error: 'title is required' }, 400)
+
+  const db = getDb(c)
+
+  // IMPORTANT: use RETURNING *
+  const r = await db
+    .prepare(
+      'INSERT INTO items (title, description) VALUES (?, ?) RETURNING *'
+    )
+    .bind(title, description)
+    .all()
+
+  const item = r.results?.[0]
+  return c.json(item, 201)
 })
 
-// Update item
+// Update item (FIXED)
 app.put('/items/:id', async (c) => {
-  try {
-    const id = Number(c.req.param('id'))
-    const body = await c.req.json()
-    const db = getDb(c)
-    // Build dynamic SET clause to allow partial updates
-    const fields: string[] = []
-    const params: any[] = []
-    if (Object.prototype.hasOwnProperty.call(body, 'title')) {
-      fields.push('title = ?')
-      params.push(body.title)
-    }
-    if (Object.prototype.hasOwnProperty.call(body, 'description')) {
-      fields.push('description = ?')
-      params.push(body.description)
-    }
-    if (fields.length === 0) return c.json({ error: 'No fields to update' }, 400)
-    params.push(id)
-    const sql = `UPDATE items SET ${fields.join(', ')} WHERE id = ?`
-    await db.prepare(sql).bind(...params).run()
-    const updated = await db.prepare('SELECT * FROM items WHERE id = ?').bind(id).all()
-    const item = (updated.results && updated.results[0]) || null
-    if (!item) return c.json({ error: 'Not found' }, 404)
-    return c.json(item)
-  } catch (err: any) {
-    return c.json({ error: err?.message || String(err) }, 500)
+  const id = Number(c.req.param('id'))
+  const body = await c.req.json()
+  const db = getDb(c)
+
+  const fields: string[] = []
+  const params: any[] = []
+
+  // Only update fields that are NOT undefined
+  if (body.title !== undefined) {
+    fields.push('title = ?')
+    params.push(body.title)
   }
+
+  if (body.description !== undefined) {
+    fields.push('description = ?')
+    params.push(body.description)
+  }
+
+  if (fields.length === 0) {
+    return c.json({ error: 'No fields to update' }, 400)
+  }
+
+  params.push(id)
+
+  await db
+    .prepare(`UPDATE items SET ${fields.join(', ')} WHERE id = ?`)
+    .bind(...params)
+    .run()
+
+  const r = await db
+    .prepare('SELECT * FROM items WHERE id = ?')
+    .bind(id)
+    .all()
+
+  const item = r.results?.[0]
+  if (!item) return c.json({ error: 'Not found' }, 404)
+
+  return c.json(item)
 })
 
 // Delete item
