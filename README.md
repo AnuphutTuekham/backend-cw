@@ -8,7 +8,7 @@ npm install
 
 ### 2. Create new D1 database
 ```
-npx wrangler d1 create your-database-name
+npx wrangler d1 create my_db
 ```
 
 output:
@@ -16,7 +16,7 @@ output:
 🌀 Creating database...
 ✅ Database created!
 
-database_name = "your-database-name"
+database_name = "my_db"
 database_id   = "abcd1234-ef56-7890-aaaa-bbbbccccdddd"
 ```
 
@@ -26,21 +26,18 @@ Copy database_id for the next step.
 ```
 "d1_databases": [
   {
-    "binding": "your-database-name",
-    "database_name": "your-database-name",
-    "database_id": "PASTE-THEIR-OWN-ID-HERE"
+    "binding": "my_db",
+    "database_name": "my_db",
+    "database_id": "PASTE-YOUR-OWN-ID-HERE"
   }
 ]
 ```
 
+ต้อง "binding": "my_db" เท่านั้น
+ส่วน "database_name": เป็นชื่ออะไรก็ได้
+
 ### 4. Run the migrations
 
-local db:
-```
-npx wrangler d1 execute your-database-name --file=./src/schema.sql
-```
-
-remote db:
 ```
 npx wrangler d1 execute your-database-name --file=./src/schema.sql --remote
 ```
@@ -49,18 +46,10 @@ npx wrangler d1 execute your-database-name --file=./src/schema.sql --remote
 ```
 npx wrangler dev
 ```
-or
-```
-npm run dev
-```
 
 ### 6. Deploy
 ```
 npx wrangler deploy
-```
-or
-```
-npm run deploy
 ```
 
 Wrangler will output:
